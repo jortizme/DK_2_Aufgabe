@@ -55,7 +55,7 @@ architecture rtl of Serieller_Sender is
 	signal CntSel    : std_ulogic := '-';
 	signal CntEn     : std_ulogic;
 	signal CntLd     : std_ulogic;
-	signal CntTc     : std_ulogic := '1';	--Warum ist das auf High?
+	signal CntTc     : std_ulogic := '1';	--Warum ist das auf High? Es sollte '0' sein
 	signal BBSel     : std_ulogic := '0';
 	signal BBLd      : std_ulogic;
 	signal BBTC      : std_ulogic := '0';
@@ -72,14 +72,15 @@ begin
 		Schieberegister: process(Takt)
 			variable Q : std_ulogic_vector(DATA_WIDTH - 1 downto 0) := (others=>'0');
 		begin
-			if rising_edge(Takt) then
-				
+			if rising_edge(Takt) then	
+
 				if ShiftLd = '1' then
 					Q = S_Data;	
 				elsif ShiftEn = '1'
 					DataBit <= Q(0);
 					Q(DATA_WIDTH - 2 downto 0) = Q(DATA_WIDTH - 1 downto 1);				
 				end if;
+
 			end if;			
 		end process;
 		
@@ -107,10 +108,30 @@ begin
 		-- Zaehler Bits und Stoppbits
 		ZaehlerBits: process(Takt)
 			variable Q : unsigned(BITS_WIDTH - 1 downto 0) := (others=>'0');
+			variable Stop_Bit : 
 		begin
 			if rising_edge(Takt) then
 
-				-- TODO: Funktion des Zaehlers beschreiben (Ausgang: CntTc)
+				case( CntSel ) is
+				
+					when '0' =>	
+								if CntLd = '1' then
+									Q = Bits;							
+								end if;
+					when '1' =>
+								if CntEn = '1' then
+									Q := Q - 1;
+									if Q = 0 then
+										CntTc <= '1';
+									end if;
+
+								else if CntLd = '1' then
+								
+									-- TODO --
+
+								end if;
+					--Maybe "when others" must be here too
+				end case ;
 			end if;
 		end process;
 		
@@ -119,6 +140,25 @@ begin
 			variable Q : unsigned(BITBREITE_WIDTH - 1 downto 0) := (others=>'0');
 		begin
 			if rising_edge(Takt) then
+
+				BBTC <= '0';	--default
+
+				case( BBSel ) is
+				
+					when '0' =>
+								if BBLd = '1' or BBTC = '1' then
+									Q := Q + 1;
+									if Q = unsigned(BitBreiteM1) then	
+										Q := (others => 0);
+										BBTC <= '1'
+									end if ;
+								end if ;
+				
+					when '1' =>
+									-- TO DO --
+				
+				end case ;
+
 
 				-- TODO: Funktion des Zaehlers beschreiben (Ausgang: BBTC)
 			end if;
