@@ -75,11 +75,11 @@ begin
 			if rising_edge(Takt) then	
 
 				if ShiftLd = '1' then
-					Q = S_Data;	
+					Q := S_Data;	
 				elsif ShiftEn = '1'
 					DataBit <= Q(0);
 					--Man kann auch die Funktion srl benutzen zum schieben nach rechts!
-					Q(DATA_WIDTH - 2 downto 0) = Q(DATA_WIDTH - 1 downto 1);				
+					Q(DATA_WIDTH - 2 downto 0) := Q(DATA_WIDTH - 1 downto 1);				
 				end if;
 
 			end if;			
@@ -113,20 +113,20 @@ begin
 			variable OutputMultiplexer : std_ulogic_vector( BITS_WIDTH - 1 downto 0 ) := (others=>'0'); 
 		begin
 
-			CntTc <= '0';	--Default für CntTc
+			case( CntSel ) is
+				
+				when '0' =>	
+							OutputMultiplexer = Bits;
+				when '1' =>
+							OutputMultiplexer = Stoppbits;
+
+				when others => null;
+
+			end case ;
 
 			if rising_edge(Takt) then
 
-				case( CntSel ) is
-				
-					when '0' =>	
-								OutputMultiplexer = Bits;
-					when '1' =>
-								OutputMultiplexer = Stoppbits;
-
-					when others => null;
-				
-				end case ;
+				CntTc <= '0';	--Default für CntTc
 				
 				if CntLd = '1' then
 					Q := OutputMultiplexer;
@@ -146,25 +146,26 @@ begin
 			variable OutputMultiplexer : std_ulogic_vector( BITBREITE_WIDTH - 1 downto 0 ) := (others=>'0');
 
 		begin
+
+			case( BBSel ) is
+				
+				when '0' =>
+							OutputMultiplexer = BitBreiteM1;
+			
+				when '1' =>
+							OutputMultiplexer = std_ulogic_vector(unsigned(BitBreiteM1) / 2);
+			end case ;
+
 			if rising_edge(Takt) then
 
-				case( BBSel ) is
-				
-					when '0' =>
-								OutputMultiplexer = BitBreiteM1;
-				
-					when '1' =>
-								OutputMultiplexer = std_ulogic_vector(unsigned(BitBreiteM1) / 2);
-				end case ;
-				
+				BBTC <= '0';
+
 				if BBLd = '1' or BBTC = '1' then
 					Q := OutputMultiplexer;
 				else
 					Q := Q - 1;
 					if Q = 0 then
-						BBTC <= '1';
-					else
-						BBTC <= '0';
+						BBTC <= '1';		
 					end if;
 				end if;
 			end if;
