@@ -1,3 +1,5 @@
+
+  
 -------------------------------------------------------------------------------
 -- Serieller Sender
 -------------------------------------------------------------------------------
@@ -76,7 +78,7 @@ begin
 
 				if ShiftLd = '1' then
 					Q := S_Data;	
-				elsif ShiftEn = '1'
+				elsif ShiftEn = '1' then
 					DataBit <= Q(0);
 					--Man kann auch die Funktion srl benutzen zum schieben nach rechts!
 					Q(DATA_WIDTH - 2 downto 0) := Q(DATA_WIDTH - 1 downto 1);				
@@ -111,30 +113,31 @@ begin
 			variable Q : unsigned(BITS_WIDTH - 1 downto 0) := (others=>'0');
 			--variable Stop_Bit : unsigned( 1 downto 0 )     := (others=> '0);
 			variable OutputMultiplexer : std_ulogic_vector( BITS_WIDTH - 1 downto 0 ) := (others=>'0'); 
+	
 		begin
 
 			case( CntSel ) is
 				
 				when '0' =>	
-							OutputMultiplexer = Bits;
+							OutputMultiplexer := Bits;
 				when '1' =>
-							OutputMultiplexer = Stoppbits;
+							OutputMultiplexer := std_ulogic_vector(resize(unsigned(Stoppbits),OutputMultiplexer'length));
 
 				when others => null;
 
 			end case ;
 
 			if rising_edge(Takt) then
-
-				CntTc <= '0';	--Default für CntTc
-				
+	
 				if CntLd = '1' then
-					Q := OutputMultiplexer;
+					Q := unsigned(OutputMultiplexer);
+					CntTc := '0';	
+					
 				
 				elsif CntEn = '1' then
 					Q := Q - 1;
-					if  Q := 0 then
-						CntTc <= '1';
+					if  Q = 0 then
+						CntTc := '1';
 					end if;
 				end if;
 			end if;
@@ -150,18 +153,20 @@ begin
 			case( BBSel ) is
 				
 				when '0' =>
-							OutputMultiplexer = BitBreiteM1;
+							OutputMultiplexer := BitBreiteM1;
 			
 				when '1' =>
-							OutputMultiplexer = std_ulogic_vector(unsigned(BitBreiteM1) / 2);
+							OutputMultiplexer := std_ulogic_vector(unsigned(BitBreiteM1) / 2);
+							
+				when others => null;
 			end case ;
 
 			if rising_edge(Takt) then
 
-				BBTC <= '0';
-
 				if BBLd = '1' or BBTC = '1' then
-					Q := OutputMultiplexer;
+					Q := unsigned(OutputMultiplexer);
+					BBTC <= '0';
+
 				else
 					Q := Q - 1;
 					if Q = 0 then
@@ -178,7 +183,7 @@ begin
 			case( TxDsel ) is
 			
 				when L =>	TxD <= '0';	
-				when H =>	TxD <= '1'
+				when H =>	TxD <= '1';
 				when P =>	TxD <= ParityBit;
 				when D =>	TxD <= DataBit;	
 				when others => null;
@@ -231,14 +236,14 @@ begin
 								end if;
 				when Z_START  =>
 								if BBTC = '0' then
-									Folgezusntad <= Z_START;
+									Folgezustand <= Z_START;
 								
 								elsif BBTC = '1' then
 									CntLd <= '1';
 									Folgezustand <= Z_BITS;
 								end if;
 				when Z_BITS  =>
-								if BBTC = '1'  then
+								if BBTC = '0'  then
 									Folgezustand <= Z_BITS;
 
 								elsif BBTC = '1' and CntTC = '0' then
@@ -255,7 +260,7 @@ begin
 								end if;															
 				when Z_PARI  =>
 								if BBTC = '0' then
-									Folgezustnad <= Z_PARI;
+									Folgezustand <= Z_PARI;
 								
 								elsif BBTC = '1' then
 									CntLd <= '1';
@@ -266,7 +271,7 @@ begin
 									Folgezustand <= Z_STP;
 								
 								elsif BBTC = '1' and CntTC = '0' then
-									CntEn <= '1'
+									CntEn <= '1';
 									Folgezustand <= Z_STP;
 								
 								elsif BBTC = '1' and CntTC = '1' then
@@ -283,37 +288,37 @@ begin
 		begin
 			if rising_edge(Takt) then
 
-				Zustand <= Folgeszustand;
+				Zustand <= Folgezustand;
 			
 				case( Folgezustand ) is
 				
 					when Z_IDLE =>
-									S_Valid_i <= '1';
+									S_Ready_i <= '1';
 									TxDSel <= H;
 									CntSel <= '-';
 									BBSel <= '0';
 					when Z_START =>
-									S_Valid_i <= '0';
+									S_Ready_i <= '0';
 									TxDSel <= L;
 									CntSel <= '0';
 									BBSel <= '0';
 					when Z_BITS =>
-									S_Valid_i <= '0';
+									S_Ready_i <= '0';
 									TxDSel <= D;
 									CntSel <= '1';
 									BBSel <= '0';
 					when Z_PARI =>
-									S_Valid_i <= '0';
+									S_Ready_i <= '0';
 									TxDSel <= P;
 									CntSel <= '1';
 									BBSel <= '0';
 					when Z_STP =>
-									S_Valid_i <= '0';
+									S_Ready_i <= '0';
 									TxDSel <= H;
 									CntSel <= '-';
 									BBSel <= '1';
 					when Z_ERROR =>
-									S_Valid_i <= 'X';
+									S_Ready_i <= 'X';
 									TxDSel <= H;
 									CntSel <= '-';
 									BBSel <= 'X';
