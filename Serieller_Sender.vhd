@@ -78,6 +78,7 @@ begin
 					Q = S_Data;	
 				elsif ShiftEn = '1'
 					DataBit <= Q(0);
+					--Man kann auch die Funktion srl benutzen zum schieben nach rechts!
 					Q(DATA_WIDTH - 2 downto 0) = Q(DATA_WIDTH - 1 downto 1);				
 				end if;
 
@@ -108,59 +109,64 @@ begin
 		-- Zaehler Bits und Stoppbits
 		ZaehlerBits: process(Takt)
 			variable Q : unsigned(BITS_WIDTH - 1 downto 0) := (others=>'0');
-			variable Stop_Bit : 
+			--variable Stop_Bit : unsigned( 1 downto 0 )     := (others=> '0);
+			variable OutputMultiplexer : std_ulogic_vector( BITS_WIDTH - 1 downto 0 ) := (others=>'0'); 
 		begin
+
+			CntTc <= '0';	--Default für CntTc
+
 			if rising_edge(Takt) then
 
 				case( CntSel ) is
 				
 					when '0' =>	
-								if CntLd = '1' then
-									Q = Bits;							
-								end if;
+								OutputMultiplexer = Bits;
 					when '1' =>
-								if CntEn = '1' then
-									Q := Q - 1;
-									if Q = 0 then
-										CntTc <= '1';
-									end if;
+								OutputMultiplexer = Stoppbits;
 
-								else if CntLd = '1' then
-								
-									-- TODO --
-
-								end if;
-					--Maybe "when others" must be here too
+					when others => null;
+				
 				end case ;
+				
+				if CntLd = '1' then
+					Q := OutputMultiplexer;
+				
+				elsif CntEn = '1' then
+					Q := Q - 1;
+					if  Q := 0 then
+						CntTc <= '1';
+					end if;
+				end if;
 			end if;
 		end process;
 		
 		-- Zaehler Bitbreite
 		ZaehlerBitbreite: process(Takt)
 			variable Q : unsigned(BITBREITE_WIDTH - 1 downto 0) := (others=>'0');
+			variable OutputMultiplexer : std_ulogic_vector( BITBREITE_WIDTH - 1 downto 0 ) := (others=>'0');
+
 		begin
 			if rising_edge(Takt) then
-
-				BBTC <= '0';	--default
 
 				case( BBSel ) is
 				
 					when '0' =>
-								if BBLd = '1' or BBTC = '1' then
-									Q := Q + 1;
-									if Q = unsigned(BitBreiteM1) then	
-										Q := (others => 0);
-										BBTC <= '1'
-									end if ;
-								end if ;
+								OutputMultiplexer = BitBreiteM1;
 				
 					when '1' =>
-									-- TO DO --
-				
+								OutputMultiplexer = std_ulogic_vector(unsigned(BitBreiteM1) / 2);
 				end case ;
-
-
-				-- TODO: Funktion des Zaehlers beschreiben (Ausgang: BBTC)
+				
+				if BBLd = '1' or BBTC = '1' then
+					Q := OutputMultiplexer;
+				else
+					Q := Q - 1;
+					if Q = 0 then
+						BBTC <= '1';
+					else
+						BBTC <= '0';
+					end if;
+				end if;
 			end if;
 		end process;
 		
@@ -168,8 +174,15 @@ begin
 		OutMux: process(TxDSel, DataBit, ParityBit)
 		begin
 
-			-- TODO: Funktion des Multiplexers beschreiben (Ausgang: TxD)
+			case( TxDsel ) is
 			
+				when L =>	TxD <= '0';	
+				when H =>	TxD <= '1'
+				when P =>	TxD <= ParityBit;
+				when D =>	TxD <= DataBit;	
+				when others => null;
+
+			end case ;	
 		end process;
 	end block;
 	
@@ -204,9 +217,64 @@ begin
 			BBLd         <= '0';
 			Folgezustand <= Z_ERROR;
 			
-			-- Berechnung des Folgezustands und der Mealy-Ausgaenge
-			-- TODO: Alle Uebergaenge des Zustandsdiagramms in VHDL formulieren
+			case( Zustand ) is
 			
+				when Z_IDLE  =>	
+								if S_Valid = '0' then
+									Folgezustand <= Z_IDLE;
+
+								elsif S_Valid = '1' then
+									ShiftLd <= '1';
+									BBLd <= '1';
+									Folgezustand <= Z_START;
+								end if;
+				when Z_START  =>
+								if BBTC = '0' then
+									Folgezusntad <= Z_START;
+								
+								elsif BBTC = '1' then
+									CntLd <= '1';
+									Folgezustand <= Z_BITS;
+								end if;
+				when Z_BITS  =>
+								if BBTC = '1'  then
+									Folgezustand <= Z_BITS;
+
+								elsif BBTC = '1' and CntTC = '0' then
+									CntEn <= '1';
+									ShiftEn <= '1';
+									Folgezustand <= Z_BITS;
+
+								elsif Paritaet_ein = '1' and BBTC = '1' and CntTC = '1' then
+									Folgezustand <= Z_PARI;
+								
+								elsif Paritaet_ein = '0' and BBTC = '1' and CntTC = '1' then
+									CntLd <= '1';
+									Folgezustand <= Z_STP;
+								end if;															
+				when Z_PARI  =>
+								if BBTC = '0' then
+									Folgezustnad <= Z_PARI;
+								
+								elsif BBTC = '1' then
+									CntLd <= '1';
+									Folgezustand <= Z_STP;				
+								end if ;
+				when Z_STP  =>	
+								if BBTC = '0' then
+									Folgezustand <= Z_STP;
+								
+								elsif BBTC = '1' and CntTC = '0' then
+									CntEn <= '1'
+									Folgezustand <= Z_STP;
+								
+								elsif BBTC = '1' and CntTC = '1' then
+									Folgezustand <= Z_IDLE;																		
+								end if ;
+
+				when Z_ERROR =>	null;
+
+			end case ;	
 		end process;
 		
 		-- Register fuer Zustand und Moore-Ausgaenge
@@ -214,11 +282,41 @@ begin
 		begin
 			if rising_edge(Takt) then
 
-				-- Zustandsregister
-				-- TODO: Funktion des Zustandsregisters beschreiben
+				Zustand <= Folgeszustand;
+			
+				case( Folgezustand ) is
 				
-				-- Berechnung der Moore-Ausgaenge aus dem Folgezustand
-				-- TODO: Aus dem Folgezustand die Werte der Moore-Ausgaenge bestimmen
+					when Z_IDLE =>
+									S_Valid_i <= '1';
+									TxDSel <= H;
+									CntSel <= '-';
+									BBSel <= '0';
+					when Z_START =>
+									S_Valid_i <= '0';
+									TxDSel <= L;
+									CntSel <= '0';
+									BBSel <= '0';
+					when Z_BITS =>
+									S_Valid_i <= '0';
+									TxDSel <= D;
+									CntSel <= '1';
+									BBSel <= '0';
+					when Z_PARI =>
+									S_Valid_i <= '0';
+									TxDSel <= P;
+									CntSel <= '1';
+									BBSel <= '0';
+					when Z_STP =>
+									S_Valid_i <= '0';
+									TxDSel <= H;
+									CntSel <= '-';
+									BBSel <= '1';
+					when Z_ERROR =>
+									S_Valid_i <= 'X';
+									TxDSel <= H;
+									CntSel <= '-';
+									BBSel <= 'X';
+					end case;
 			end if;
 		end process;
 			
