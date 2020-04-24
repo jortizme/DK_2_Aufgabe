@@ -131,13 +131,13 @@ begin
 	
 				if CntLd = '1' then
 					Q := unsigned(OutputMultiplexer);
-					CntTc := '0';	
+					CntTc <= '0';	
 					
 				
 				elsif CntEn = '1' then
 					Q := Q - 1;
 					if  Q = 0 then
-						CntTc := '1';
+						CntTc <= '1';
 					end if;
 				end if;
 			end if;
