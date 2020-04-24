@@ -68,6 +68,7 @@ begin
 	    -- Interne Signale des Rechenwerks
 		signal DataBit   : std_ulogic := '0';
 		signal ParityBit : std_ulogic := '0';
+		signal MultiplexZaehlerOut	:	std_ulogic_vector (BITS_WIDTH - 1 downto 0)	:= (others =>'0');
 		
 	begin
 		-- Schieberegister zur Aufnahme der Sendedaten
@@ -111,18 +112,18 @@ begin
 		-- Zaehler Bits und Stoppbits
 		ZaehlerBits: process(Takt)
 			variable Q : unsigned(BITS_WIDTH - 1 downto 0) := (others=>'0');
-			--variable Stop_Bit : unsigned( 1 downto 0 )     := (others=> '0);
-			variable OutputMultiplexer : std_ulogic_vector( BITS_WIDTH - 1 downto 0 ) := (others=>'0'); 
-	
+			--variable OutputMultiplexer : std_ulogic_vector( BITS_WIDTH - 1 downto 0 ) := (others=>'0'); 
+			
 		begin
 
 			case( CntSel ) is
 				
 				when '0' =>	
-							OutputMultiplexer := Bits;
+							MultiplexZaehlerOut <= Bits;
 				when '1' =>
-							OutputMultiplexer := std_ulogic_vector(resize(unsigned(Stoppbits),OutputMultiplexer'length));
-
+							MultiplexZaehlerOut(BITS_WIDTH - 1 downto 2) <= (others => '0');
+							--MultiplexZaehlerOut <= std_ulogic_vector(resize(unsigned(Stoppbits),OutputMultiplexer'length));
+							MultiplexZaehlerOut (1 downto 0) <= Stoppbits;
 				when others => null;
 
 			end case ;
@@ -130,7 +131,7 @@ begin
 			if rising_edge(Takt) then
 	
 				if CntLd = '1' then
-					Q := unsigned(OutputMultiplexer);
+					Q := unsigned(MultiplexZaehlerOut);
 					CntTc <= '0';	
 					
 				
