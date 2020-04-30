@@ -52,7 +52,8 @@ begin
 				if M_Ready = '1' and i < TXT'length then	
 					M_Data_i <= std_ulogic_vector(to_unsigned(character'pos(TXT(1+i)), M_Data_i'length));
 					i := i+1;
-				else
+
+				elsif  i = TXT'length then
 				M_Data_i <= std_ulogic_vector(to_unsigned(character'pos(TXT(1)), M_Data_i'length));
 				i := 1;
 				end if;
