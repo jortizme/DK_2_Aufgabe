@@ -49,26 +49,13 @@ begin
 	begin
 		if rising_edge(Takt) then
 			
-			if M_Ready = '1' and M_Valid_i = '1' then		
-				
-				M_Data_i <= std_ulogic_vector(to_unsigned(character'pos(TXT(1+i)), M_Data_i'length)); 
-				i := i+1;--wenn den über mdata ergibt fehler...	
-				if i = (TXT'length) then 
-					M_Valid_i <= '0';
-				end if;			
-			end if;
-
-			--Alternative
-			--if M_Ready = '1'  and M_Valid_i = '1' then		
-				
-				--for cnt in 1 to TXT'length loop
-				--	M_Data_i <= std_ulogic_vector(to_unsigned(character'pos(TXT(1+cnt)), M_Data_i'length));
-
-				--	if cnt = (TXT'length) then
-				--		M_Valid_i <= '0';
-				--	end if;			
-			--	end loop; 				
-			--end if;	
+				if M_Ready = '1' and i < TXT'length then	
+					M_Data_i <= std_ulogic_vector(to_unsigned(character'pos(TXT(1+i)), M_Data_i'length));
+					i := i+1;
+				else
+				M_Data_i <= std_ulogic_vector(to_unsigned(character'pos(TXT(1)), M_Data_i'length));
+				i := 1;
+				end if;
 			
 		end if;
 	end process;
