@@ -49,11 +49,11 @@ begin
 	begin
 		if rising_edge(Takt) then
 			
-			if M_Ready = '1'  and M_Valid_i = '1' then		
+			if M_Ready = '1' and M_Valid_i = '1' then		
 				
 				M_Data_i <= std_ulogic_vector(to_unsigned(character'pos(TXT(1+i)), M_Data_i'length)); 
 				i := i+1;--wenn den über mdata ergibt fehler...	
-				if i = (TXT'length) then
+				if i = (TXT'length) then 
 					M_Valid_i <= '0';
 				end if;			
 			end if;
